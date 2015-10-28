@@ -99,7 +99,6 @@ def generate_graphs(previous_tweet=False):
 if __name__ == '__main__':
     now = datetime.now()
     minutes = int(now.strftime('%-M')) + 5
-    if minutes % 5 == 0:
-        generate_graphs(previous_tweet=False)
-    else:
+    while minutes % 5 != 0:
         time.sleep(1)
+    generate_graphs(previous_tweet=False)
