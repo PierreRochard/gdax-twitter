@@ -91,11 +91,15 @@ def generate_graphs(previous_tweet=False):
             twitter.destroy_status(id=previous_tweet['id_str'])
         try:
             previous_tweet = twitter.update_status(media_ids=media_ids)
-            print(id)
         except TwythonError:
             print('TwythonError')
         time.sleep(60*5)
 
 
 if __name__ == '__main__':
-    generate_graphs(previous_tweet=False)
+    now = datetime.now()
+    minutes = int(now.strftime('%-M')) + 5
+    if minutes % 5 == 0:
+        generate_graphs(previous_tweet=False)
+    else:
+        time.sleep(1)

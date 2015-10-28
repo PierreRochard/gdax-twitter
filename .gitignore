@@ -75,3 +75,4 @@ target/
 twitter_config.py
 
 *.png
+.idea/*
