@@ -93,7 +93,7 @@ def generate_graphs(previous_tweet=False):
             previous_tweet = twitter.update_status(media_ids=media_ids)
         except TwythonError:
             print('TwythonError')
-        time.sleep(60*5)
+        time.sleep(60*10)
 
 
 if __name__ == '__main__':
