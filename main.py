@@ -101,4 +101,6 @@ if __name__ == '__main__':
     minutes = int(now.strftime('%-M')) + 5
     while minutes % 5 != 0:
         time.sleep(1)
+        now = datetime.now()
+        minutes = int(now.strftime('%-M')) + 5
     generate_graphs(previous_tweet=False)
