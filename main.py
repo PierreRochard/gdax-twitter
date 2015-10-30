@@ -33,14 +33,14 @@ def output_graph(interval):
 
     end = datetime.now(tzlocal())
     if interval == 'year':
-        title = 'Past Year'
+        title = 'Past 8 Months'
         # Exchange hasn't been trading for a year (yet)
         delta = timedelta(days=30*8)
         start = end - delta
         granularity = calculate_granularity(end-start)
         datetime_format = '%-m'
         width = 0.008
-        text = '\nx12mos: '
+        text = '\n8m: '
     elif interval == 'month':
         title = 'Past Month'
         delta = timedelta(days=30)
@@ -48,7 +48,7 @@ def output_graph(interval):
         granularity = calculate_granularity(end-start)
         datetime_format = '%-m - %-d'
         width = 0.008
-        text = '\n1mo: '
+        text = '\n1m: '
     elif interval == 'week':
         title = 'Past Week'
         delta = timedelta(days=7)
@@ -92,7 +92,7 @@ def output_graph(interval):
         volumes += [float(volume)]
         quotes += [(date2num(time), float(open_px), float(high), float(low), float(close))]
     percent = round((mkt_close_price[0]-mkt_open_price[-1])*100/mkt_open_price[-1], 4)
-    text += '{0:.2f} -> {1:.2f} {2:.2f}%'.format(mkt_open_price[-1], mkt_close_price[0], percent)
+    text += '{0:.0f} -> {1:.0f} {2:.0f}%'.format(mkt_open_price[-1], mkt_close_price[0], percent)
     plt.xlim(start, datetime.now(tzlocal()))
 
     red = (0.244, 0.102, 0.056)
@@ -130,8 +130,9 @@ def generate_graphs(previous_tweet=False):
         if args.tweeting:
             try:
                 previous_tweet = twitter.update_status(status=tweet, media_ids=media_ids)
-            except TwythonError:
-                print('TwythonError')
+            except TwythonError as err:
+                print('{0}'.format(err))
+                print(len(tweet))
             time.sleep(60*10)
         else:
             return True
@@ -139,10 +140,11 @@ def generate_graphs(previous_tweet=False):
 
 if __name__ == '__main__':
     if args.tweeting:
-        now = datetime.now()
-        minutes = int(now.strftime('%-M')) + 10
-        while minutes % 10 != 0:
-            time.sleep(1)
+        print('tweeting')
+        while True:
             now = datetime.now()
             minutes = int(now.strftime('%-M')) + 10
-    generate_graphs(previous_tweet=False)
+            if minutes % 10 == 0:
+                generate_graphs(previous_tweet=False)
+            else:
+                time.sleep(1)
