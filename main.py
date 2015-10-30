@@ -90,7 +90,8 @@ def output_graph(interval):
         mkt_high_price += [float(high)]
         volumes += [float(volume)]
         quotes += [(date2num(time), float(open_px), float(high), float(low), float(close))]
-
+    percent = round((mkt_close_price[0]-mkt_open_price[-1])*100/mkt_open_price[-1], 4)
+    text += '{0:.2f} -> {1:.2f} {2:.2f}%'.format(mkt_open_price[-1], mkt_close_price[0], percent)
     plt.xlim(start, datetime.now(tzlocal()))
 
     red = (0.244, 0.102, 0.056)
@@ -113,8 +114,9 @@ def output_graph(interval):
 def generate_graphs(previous_tweet=False):
     while True:
         media_ids = []
-        for interval in ['year', 'month', 'week', 'day']:
-            output_graph(interval)
+        tweet = ''
+        for interval in ['day', 'week', 'month', 'year']:
+            tweet += output_graph(interval)
             if args.tweeting:
                 photo = open('{0}.png'.format(interval), 'rb')
                 response = twitter.upload_media(media=photo)
@@ -123,7 +125,7 @@ def generate_graphs(previous_tweet=False):
             twitter.destroy_status(id=previous_tweet['id_str'])
         if args.tweeting:
             try:
-                previous_tweet = twitter.update_status(media_ids=media_ids)
+                previous_tweet = twitter.update_status(status=tweet, media_ids=media_ids)
             except TwythonError:
                 print('TwythonError')
             time.sleep(60*10)
