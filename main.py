@@ -40,7 +40,7 @@ def output_graph(interval):
         granularity = calculate_granularity(end-start)
         datetime_format = '%-m'
         width = 0.008
-        text = '\n12mos: '
+        text = '\nx12mos: '
     elif interval == 'month':
         title = 'Past Month'
         delta = timedelta(days=30)
@@ -74,6 +74,7 @@ def output_graph(interval):
         rates = requests.get(exchange_api_url + 'products/BTC-USD/candles', params=params).json()
     except ValueError:
         print('Unable to load Coinbase response')
+        return False
     mkt_time = []
     mkt_open_price = []
     mkt_low_price = []
@@ -116,6 +117,9 @@ def generate_graphs(previous_tweet=False):
         media_ids = []
         tweet = ''
         for interval in ['day', 'week', 'month', 'year']:
+            text = output_graph(interval)
+            if not text:
+                continue
             tweet += output_graph(interval)
             if args.tweeting:
                 photo = open('{0}.png'.format(interval), 'rb')
