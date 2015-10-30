@@ -40,7 +40,7 @@ def output_graph(interval):
         granularity = calculate_granularity(end-start)
         datetime_format = '%-m'
         width = 0.008
-        text = '12mos: '
+        text = '\n12mos: '
     elif interval == 'month':
         title = 'Past Month'
         delta = timedelta(days=30)
