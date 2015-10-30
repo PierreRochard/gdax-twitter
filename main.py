@@ -34,11 +34,13 @@ def output_graph(interval):
     end = datetime.now(tzlocal())
     if interval == 'year':
         title = 'Past Year'
-        delta = timedelta(days=365)
+        # Exchange hasn't been trading for a year (yet)
+        delta = timedelta(days=30*8)
         start = end - delta
         granularity = calculate_granularity(end-start)
         datetime_format = '%-m'
         width = 0.008
+        text = '12mos: '
     elif interval == 'month':
         title = 'Past Month'
         delta = timedelta(days=30)
@@ -46,6 +48,7 @@ def output_graph(interval):
         granularity = calculate_granularity(end-start)
         datetime_format = '%-m - %-d'
         width = 0.008
+        text = '\n1mo: '
     elif interval == 'week':
         title = 'Past Week'
         delta = timedelta(days=7)
@@ -53,6 +56,7 @@ def output_graph(interval):
         granularity = calculate_granularity(end-start)
         datetime_format = '%a'
         width = 0.005
+        text = '\nweek: '
     elif interval == 'day':
         title = 'Past Day'
         delta = timedelta(days=1)
@@ -60,6 +64,7 @@ def output_graph(interval):
         granularity = calculate_granularity(end-start)
         datetime_format = '%-I:%M'
         width = 0.001
+        text = '\nday: '
     else:
         return False
     params = {'granularity': granularity,
@@ -102,6 +107,7 @@ def output_graph(interval):
     ax1.xaxis.set_ticks_position('bottom')
     ax1.yaxis.set_ticks_position('left')
     plt.savefig('{0}.png'.format(interval))
+    return text
 
 
 def generate_graphs(previous_tweet=False):
