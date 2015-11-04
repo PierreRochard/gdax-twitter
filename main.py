@@ -26,6 +26,8 @@ args = ARGS.parse_args()
 def calculate_granularity(delta):
     return int(delta.total_seconds()/200)
 
+def diff_month(d1, d2):
+    return (d1.year - d2.year)*12 + d1.month - d2.month
 
 def output_graph(interval):
     fig1 = plt.figure()
@@ -33,9 +35,13 @@ def output_graph(interval):
 
     end = datetime.now(tzlocal())
     if interval == 'year':
-        title = 'Past 8 Months'
+        delta = timedelta(years=1)
+        months = diff_month(end, start)
+        if(months >= 12):
+            months = 12
+        title = 'Past 'months' Months'
         # Exchange hasn't been trading for a year (yet)
-        delta = timedelta(days=30*8)
+        delta = timedelta(days=30*months)
         start = end - delta
         granularity = calculate_granularity(end-start)
         datetime_format = '%-m'
