@@ -36,10 +36,11 @@ def output_graph(interval):
     end = datetime.now(tzlocal())
     if interval == 'year':
         delta = timedelta(years=1)
+        start = end - delta
         months = diff_month(end, start)
         if(months >= 12):
             months = 12
-        title = 'Past 'months' Months'
+        title = 'Past ' + months + ' Months'
         # Exchange hasn't been trading for a year (yet)
         delta = timedelta(days=30*months)
         start = end - delta
