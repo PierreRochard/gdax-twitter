@@ -11,7 +11,7 @@ from matplotlib.finance import candlestick_ohlc, volume_overlay
 import matplotlib.pyplot as plt
 from twython import Twython, TwythonError
 
-from twitter_config import APP_KEY, APP_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET
+from twitter_config import APP_KEY, APP_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET, SCREEN_NAME
 
 twitter = Twython(APP_KEY, APP_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
 
@@ -94,6 +94,12 @@ def output_graph(interval):
     percent = round((mkt_close_price[0]-mkt_open_price[-1])*100/mkt_open_price[-1], 4)
     text += '{0:.0f} -> {1:.0f} {2:.0f}%'.format(mkt_open_price[-1], mkt_close_price[0], percent)
     plt.xlim(start, datetime.now(tzlocal()))
+    hl_percent = round((max(mkt_high_price)-min(mkt_low_price))*100/min(mkt_low_price), 4)
+    s = 'Open:{0:.2f} Close:{1:.2f}  {2:.2f}% \n ' \
+        'Low:{3:.2f} High:{4:.2f}  {5:.2f}%'.format(mkt_open_price[-1], mkt_close_price[0], percent,
+                                                  min(mkt_low_price), max(mkt_high_price), hl_percent)
+    t4 = ax1.text(0.3, 0.9, s, transform=ax1.transAxes)
+
 
     red = (0.244, 0.102, 0.056)
     green = (0.132, 0.247, 0.102)
@@ -112,7 +118,7 @@ def output_graph(interval):
     return text
 
 
-def generate_graphs(previous_tweet=False):
+def generate_graphs():
     while True:
         media_ids = []
         tweet = ''
@@ -123,13 +129,17 @@ def generate_graphs(previous_tweet=False):
             tweet += output_graph(interval)
             if args.tweeting:
                 photo = open('{0}.png'.format(interval), 'rb')
-                response = twitter.upload_media(media=photo)
+                try:
+                    response = twitter.upload_media(media=photo)
+                except TwythonError as err:
+                    print('{0}'.format(err))
+                    return True
                 media_ids += [response['media_id']]
-        if previous_tweet and args.tweeting:
-            twitter.destroy_status(id=previous_tweet['id_str'])
         if args.tweeting:
             try:
-                previous_tweet = twitter.update_status(status=tweet, media_ids=media_ids)
+                for tweet in twitter.get_user_timeline(screen_name=SCREEN_NAME):
+                    twitter.destroy_status(id=tweet['id_str'])
+                twitter.update_status(status=tweet, media_ids=media_ids)
             except TwythonError as err:
                 print('{0}'.format(err))
                 print(len(tweet))
@@ -145,6 +155,8 @@ if __name__ == '__main__':
             now = datetime.now()
             minutes = int(now.strftime('%-M')) + 10
             if minutes % 10 == 0:
-                generate_graphs(previous_tweet=False)
+                generate_graphs()
             else:
                 time.sleep(1)
+    else:
+        generate_graphs()
