@@ -137,8 +137,8 @@ def generate_graphs():
                 media_ids += [response['media_id']]
         if args.tweeting:
             try:
-                for tweet in twitter.get_user_timeline(screen_name=SCREEN_NAME):
-                    twitter.destroy_status(id=tweet['id_str'])
+                for status in twitter.get_user_timeline(screen_name=SCREEN_NAME):
+                    twitter.destroy_status(id=status['id_str'])
                 twitter.update_status(status=tweet, media_ids=media_ids)
             except TwythonError as err:
                 print('{0}'.format(err))
