@@ -1,5 +1,5 @@
 import argparse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from dateutil.tz import tzlocal
 import pytz
 import time
@@ -26,8 +26,6 @@ args = ARGS.parse_args()
 def calculate_granularity(delta):
     return int(delta.total_seconds()/200)
 
-def diff_month(d1, d2):
-    return (d1.year - d2.year)*12 + d1.month - d2.month
 
 def output_graph(interval):
     fig1 = plt.figure()
@@ -35,14 +33,12 @@ def output_graph(interval):
 
     end = datetime.now(tzlocal())
     if interval == 'year':
-        delta = timedelta(years=1)
-        start = end - delta
-        months = diff_month(end, start)
-        if(months >= 12):
+        start = date(2015, 4, 1)
+        months = (end.year - start.year)*12 + end.month - start.month
+        if months > 12:
             months = 12
-        title = 'Past ' + months + ' Months'
-        # Exchange hasn't been trading for a year (yet)
-        delta = timedelta(days=30*months)
+        title = 'Past ' + str(months) + ' Months'
+        delta = timedelta(weeks=4*months)
         start = end - delta
         granularity = calculate_granularity(end-start)
         datetime_format = '%-m'
@@ -50,7 +46,7 @@ def output_graph(interval):
         text = '\n8m: '
     elif interval == 'month':
         title = 'Past Month'
-        delta = timedelta(days=30)
+        delta = timedelta(weeks=4)
         start = end - delta
         granularity = calculate_granularity(end-start)
         datetime_format = '%-m - %-d'
@@ -58,7 +54,7 @@ def output_graph(interval):
         text = '\n1m: '
     elif interval == 'week':
         title = 'Past Week'
-        delta = timedelta(days=7)
+        delta = timedelta(weeks=1)
         start = end - delta
         granularity = calculate_granularity(end-start)
         datetime_format = '%a'
