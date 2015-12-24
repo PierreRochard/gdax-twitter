@@ -2,12 +2,11 @@ import argparse
 from datetime import datetime, timedelta, date
 from dateutil.tz import tzlocal
 import pytz
-import time
 
 import requests
 import matplotlib.dates as mdates
 from matplotlib.dates import date2num
-from matplotlib.finance import candlestick_ohlc, volume_overlay
+from matplotlib.finance import candlestick_ohlc
 import matplotlib.pyplot as plt
 from twython import Twython, TwythonError
 
@@ -41,7 +40,7 @@ def output_graph(interval):
         delta = timedelta(weeks=4*months)
         start = end - delta
         granularity = calculate_granularity(end-start)
-        datetime_format = '%-m'
+        datetime_format = '%m'
         width = 0.008
         text = '\n8m: '
     elif interval == 'month':
@@ -49,7 +48,7 @@ def output_graph(interval):
         delta = timedelta(weeks=4)
         start = end - delta
         granularity = calculate_granularity(end-start)
-        datetime_format = '%-m - %-d'
+        datetime_format = '%m - %d'
         width = 0.008
         text = '\n1m: '
     elif interval == 'week':
@@ -65,7 +64,7 @@ def output_graph(interval):
         delta = timedelta(days=1)
         start = end - delta
         granularity = calculate_granularity(end-start)
-        datetime_format = '%-I:%M'
+        datetime_format = '%I:%M'
         width = 0.001
         text = '\nday: '
     else:
@@ -85,6 +84,7 @@ def output_graph(interval):
     mkt_high_price = []
     volumes = []
     quotes = []
+    print(rates)
     for time, low, high, open_px, close, volume in rates:
         time = datetime.fromtimestamp(time, tz=pytz.utc).astimezone(tzlocal())
         mkt_time += [time]
@@ -102,7 +102,6 @@ def output_graph(interval):
         'Low:{3:.2f} High:{4:.2f}  {5:.2f}%'.format(mkt_open_price[-1], mkt_close_price[0], percent,
                                                   min(mkt_low_price), max(mkt_high_price), hl_percent)
     t4 = ax1.text(0.3, 0.9, s, transform=ax1.transAxes)
-
 
     red = (0.244, 0.102, 0.056)
     green = (0.132, 0.247, 0.102)
@@ -122,44 +121,30 @@ def output_graph(interval):
 
 
 def generate_graphs():
-    while True:
-        media_ids = []
-        tweet = ''
-        for interval in ['day', 'week', 'month', 'year']:
-            text = output_graph(interval)
-            if not text:
-                continue
-            tweet += output_graph(interval)
-            if args.tweeting:
-                photo = open('{0}.png'.format(interval), 'rb')
-                try:
-                    response = twitter.upload_media(media=photo)
-                except TwythonError as err:
-                    print('{0}'.format(err))
-                    return True
-                media_ids += [response['media_id']]
+    media_ids = []
+    tweet = ''
+    for interval in ['day', 'week', 'month', 'year']:
+        text = output_graph(interval)
+        if not text:
+            continue
+        tweet += output_graph(interval)
         if args.tweeting:
+            photo = open('{0}.png'.format(interval), 'rb')
             try:
-                for status in twitter.get_user_timeline(screen_name=SCREEN_NAME):
-                    twitter.destroy_status(id=status['id_str'])
-                twitter.update_status(status=tweet, media_ids=media_ids)
+                response = twitter.upload_media(media=photo)
             except TwythonError as err:
                 print('{0}'.format(err))
-                print(len(tweet))
-            time.sleep(60*10)
-        else:
-            return True
-
+                return True
+            media_ids += [response['media_id']]
+    if args.tweeting:
+        try:
+            for status in twitter.get_user_timeline(screen_name=SCREEN_NAME):
+                twitter.destroy_status(id=status['id_str'])
+            twitter.update_status(status=tweet, media_ids=media_ids)
+        except TwythonError as err:
+            print('{0}'.format(err))
+            print(len(tweet))
 
 if __name__ == '__main__':
-    if args.tweeting:
-        print('tweeting')
-        while True:
-            now = datetime.now()
-            minutes = int(now.strftime('%-M')) + 10
-            if minutes % 10 == 0:
-                generate_graphs()
-            else:
-                time.sleep(1)
-    else:
-        generate_graphs()
+    generate_graphs()
+
