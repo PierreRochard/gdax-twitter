@@ -2,6 +2,7 @@ import argparse
 from datetime import datetime, timedelta, date
 from dateutil.tz import tzlocal
 import pytz
+import sys
 
 import requests
 import matplotlib.dates as mdates
@@ -85,7 +86,9 @@ def output_graph(interval):
     volumes = []
     quotes = []
     print(rates)
+    vwap_multiple_sum = 0.0
     for time, low, high, open_px, close, volume in rates:
+        vwap_multiple_sum += float(close) * float(volume)
         time = datetime.fromtimestamp(time, tz=pytz.utc).astimezone(tzlocal())
         mkt_time += [time]
         mkt_open_price += [float(open_px)]
@@ -94,6 +97,7 @@ def output_graph(interval):
         mkt_high_price += [float(high)]
         volumes += [float(volume)]
         quotes += [(date2num(time), float(open_px), float(high), float(low), float(close))]
+    vwap = vwap_multiple_sum/sum(volumes)
     percent = round((mkt_close_price[0]-mkt_open_price[-1])*100/mkt_open_price[-1], 4)
     text += '{0:.0f} -> {1:.0f} {2:.0f}%'.format(mkt_open_price[-1], mkt_close_price[0], percent)
     plt.xlim(start, datetime.now(tzlocal()))
@@ -112,6 +116,7 @@ def output_graph(interval):
     plt.gca().xaxis.set_major_formatter(myFmt)
     plt.setp(plt.gca().get_xticklabels(), rotation=45, horizontalalignment='right')
     plt.suptitle(title, fontsize=20)
+    plt.gca().set_ylim([min(vwap*0.9, min(mkt_low_price)), max(vwap*1.1, max(mkt_high_price))])
     ax1.spines['right'].set_visible(False)
     ax1.spines['top'].set_visible(False)
     ax1.xaxis.set_ticks_position('bottom')
@@ -147,4 +152,4 @@ def generate_graphs():
 
 if __name__ == '__main__':
     generate_graphs()
-
+    sys.exit(0)
