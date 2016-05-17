@@ -150,6 +150,7 @@ def generate_graphs():
                     print('{0}'.format(err))
                     return True
                 media_ids += [response['media_id']]
+            time.sleep(10)
         if args.tweeting:
             try:
                 for status in twitter.get_user_timeline(screen_name='CBExchange' + currency):
@@ -158,8 +159,6 @@ def generate_graphs():
             except TwythonError as err:
                 print('{0}'.format(err))
                 print(len(tweet))
-        time.sleep(10)
-
 
 if __name__ == '__main__':
     generate_graphs()
