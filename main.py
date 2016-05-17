@@ -1,8 +1,11 @@
 import argparse
 from datetime import datetime, timedelta, date
+from pprint import pformat
+import sys
+
 from dateutil.tz import tzlocal
 import pytz
-import sys
+import time
 
 import requests
 import matplotlib.dates as mdates
@@ -11,9 +14,7 @@ from matplotlib.finance import candlestick_ohlc
 import matplotlib.pyplot as plt
 from twython import Twython, TwythonError
 
-from twitter_config import APP_KEY, APP_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET, SCREEN_NAME
-
-twitter = Twython(APP_KEY, APP_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
+from twitter_config import KEYS
 
 exchange_api_url = 'https://api.exchange.coinbase.com/'
 
@@ -24,23 +25,23 @@ args = ARGS.parse_args()
 
 
 def calculate_granularity(delta):
-    return int(delta.total_seconds()/200)
+    return int(delta.total_seconds() / 200)
 
 
-def output_graph(interval):
+def output_graph(interval, pair):
     fig1 = plt.figure()
     ax1 = fig1.add_subplot(111)
 
     end = datetime.now(tzlocal())
     if interval == 'year':
         start = date(2015, 4, 1)
-        months = (end.year - start.year)*12 + end.month - start.month
+        months = (end.year - start.year) * 12 + end.month - start.month
         if months > 12:
             months = 12
         title = 'Past ' + str(months) + ' Months'
-        delta = timedelta(weeks=4*months)
+        delta = timedelta(weeks=4 * months)
         start = end - delta
-        granularity = calculate_granularity(end-start)
+        granularity = calculate_granularity(end - start)
         datetime_format = '%m'
         width = 0.008
         text = '\n8m: '
@@ -48,7 +49,7 @@ def output_graph(interval):
         title = 'Past Month'
         delta = timedelta(weeks=4)
         start = end - delta
-        granularity = calculate_granularity(end-start)
+        granularity = calculate_granularity(end - start)
         datetime_format = '%m - %d'
         width = 0.008
         text = '\n1m: '
@@ -56,7 +57,7 @@ def output_graph(interval):
         title = 'Past Week'
         delta = timedelta(weeks=1)
         start = end - delta
-        granularity = calculate_granularity(end-start)
+        granularity = calculate_granularity(end - start)
         datetime_format = '%a'
         width = 0.005
         text = '\nweek: '
@@ -64,7 +65,7 @@ def output_graph(interval):
         title = 'Past Day'
         delta = timedelta(days=1)
         start = end - delta
-        granularity = calculate_granularity(end-start)
+        granularity = calculate_granularity(end - start)
         datetime_format = '%I:%M'
         width = 0.001
         text = '\nday: '
@@ -74,9 +75,12 @@ def output_graph(interval):
               'start': str(start),
               'end': str(end)}
     try:
-        rates = requests.get(exchange_api_url + 'products/BTC-USD/candles', params=params).json()
+        rates = requests.get(exchange_api_url + 'products/' + pair + '/candles', params=params).json()
     except ValueError:
         print('Unable to load Coinbase response')
+        return False
+    if 'message' in rates and rates['message'].startswith('You have exceeded your request rate'):
+        print('Requesting too fast')
         return False
     mkt_time = []
     mkt_open_price = []
@@ -85,71 +89,79 @@ def output_graph(interval):
     mkt_high_price = []
     volumes = []
     quotes = []
-    print(rates)
-    vwap_multiple_sum = 0.0
-    for time, low, high, open_px, close, volume in rates:
-        vwap_multiple_sum += float(close) * float(volume)
-        time = datetime.fromtimestamp(time, tz=pytz.utc).astimezone(tzlocal())
-        mkt_time += [time]
-        mkt_open_price += [float(open_px)]
-        mkt_low_price += [float(low)]
-        mkt_close_price += [float(close)]
-        mkt_high_price += [float(high)]
-        volumes += [float(volume)]
-        quotes += [(date2num(time), float(open_px), float(high), float(low), float(close))]
-    vwap = vwap_multiple_sum/sum(volumes)
-    percent = round((mkt_close_price[0]-mkt_open_price[-1])*100/mkt_open_price[-1], 4)
+    try:
+        for timestamp, low, high, open_px, close, volume in rates:
+            timestamp = datetime.fromtimestamp(timestamp, tz=pytz.utc).astimezone(tzlocal())
+            mkt_time += [timestamp]
+            mkt_open_price += [float(open_px)]
+            mkt_low_price += [float(low)]
+            mkt_close_price += [float(close)]
+            mkt_high_price += [float(high)]
+            volumes += [float(volume)]
+            quotes += [(date2num(timestamp), float(open_px), float(high), float(low), float(close))]
+    except ValueError:
+        print(pformat(rates))
+        sys.exit(0)
+
+    percent = round((mkt_close_price[0] - mkt_open_price[-1]) * 100 / mkt_open_price[-1], 4)
     text += '{0:.0f} -> {1:.0f} {2:.0f}%'.format(mkt_open_price[-1], mkt_close_price[0], percent)
     plt.xlim(start, datetime.now(tzlocal()))
-    hl_percent = round((max(mkt_high_price)-min(mkt_low_price))*100/min(mkt_low_price), 4)
-    s = 'Open:{0:.2f} Close:{1:.2f}  {2:.2f}% \n ' \
-        'Low:{3:.2f} High:{4:.2f}  {5:.2f}%'.format(mkt_open_price[-1], mkt_close_price[0], percent,
-                                                  min(mkt_low_price), max(mkt_high_price), hl_percent)
-    t4 = ax1.text(0.3, 0.9, s, transform=ax1.transAxes)
+    hl_percent = round((max(mkt_high_price) - min(mkt_low_price)) * 100 / min(mkt_low_price), 4)
+    s = '''Open:{0:.2f} Close:{1:.2f}  {2:.2f}% \n Low:{3:.2f}  High:{4:.2f}   {5:.2f}%'''.format(mkt_open_price[-1],
+                                                          mkt_close_price[0],
+                                                          percent,
+                                                          min(mkt_low_price),
+                                                          max(mkt_high_price),
+                                                          hl_percent)
 
     red = (0.244, 0.102, 0.056)
     green = (0.132, 0.247, 0.102)
-
     candlestick_ohlc(ax1, quotes, width=width, colorup=green, colordown=red)
     # volume_overlay(ax1, opens=mkt_open_price, closes=mkt_close_price, volumes=volumes, colorup=green, colordown=red)
-    myFmt = mdates.DateFormatter(datetime_format, tzlocal())
-    plt.gca().xaxis.set_major_formatter(myFmt)
+    date_formatter = mdates.DateFormatter(datetime_format, tzlocal())
+    plt.gca().xaxis.set_major_formatter(date_formatter)
     plt.setp(plt.gca().get_xticklabels(), rotation=45, horizontalalignment='right')
     plt.suptitle(title, fontsize=20)
-    plt.gca().set_ylim([min(vwap*0.9, min(mkt_low_price)), max(vwap*1.1, max(mkt_high_price))])
     ax1.spines['right'].set_visible(False)
     ax1.spines['top'].set_visible(False)
     ax1.xaxis.set_ticks_position('bottom')
     ax1.yaxis.set_ticks_position('left')
-    plt.savefig('{0}.png'.format(interval))
+    plt.savefig('{0}-{1}.png'.format(interval, pair))
     return text
 
 
 def generate_graphs():
-    media_ids = []
-    tweet = ''
-    for interval in ['day', 'week', 'month', 'year']:
-        text = output_graph(interval)
-        if not text:
-            continue
-        tweet += output_graph(interval)
+    for pair in ['BTC-USD', 'BTC-GBP', 'BTC-EUR']:
+        currency = pair.split('-')[-1]
+        twitter = Twython(KEYS['APP_KEY_' + currency], KEYS['APP_SECRET_' + currency],
+                          KEYS['OAUTH_TOKEN_' + currency], KEYS['OAUTH_TOKEN_SECRET_' + currency])
+        media_ids = []
+        tweet = ''
+        for interval in ['day', 'week', 'month', 'year']:
+            text = output_graph(interval, pair)
+            if not text:
+                continue
+            tweet += text
+            if args.tweeting:
+                photo = open('{0}-{1}.png'.format(interval, pair), 'rb')
+                try:
+                    response = twitter.upload_media(media=photo)
+                except TwythonError as err:
+                    print('{0}'.format(err))
+                    return True
+                media_ids += [response['media_id']]
+            print(interval)
+            print(pair)
         if args.tweeting:
-            photo = open('{0}.png'.format(interval), 'rb')
             try:
-                response = twitter.upload_media(media=photo)
+                for status in twitter.get_user_timeline(screen_name='CBExchange' + currency):
+                    twitter.destroy_status(id=status['id_str'])
+                twitter.update_status(status=tweet, media_ids=media_ids)
             except TwythonError as err:
                 print('{0}'.format(err))
-                return True
-            media_ids += [response['media_id']]
-    if args.tweeting:
-        try:
-            for status in twitter.get_user_timeline(screen_name=SCREEN_NAME):
-                twitter.destroy_status(id=status['id_str'])
-            twitter.update_status(status=tweet, media_ids=media_ids)
-        except TwythonError as err:
-            print('{0}'.format(err))
-            print(len(tweet))
+                print(len(tweet))
+        time.sleep(10)
+
 
 if __name__ == '__main__':
     generate_graphs()
-    sys.exit(0)
