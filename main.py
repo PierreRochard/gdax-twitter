@@ -150,8 +150,6 @@ def generate_graphs():
                     print('{0}'.format(err))
                     return True
                 media_ids += [response['media_id']]
-            print(interval)
-            print(pair)
         if args.tweeting:
             try:
                 for status in twitter.get_user_timeline(screen_name='CBExchange' + currency):
