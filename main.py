@@ -1,5 +1,5 @@
 import argparse
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from pprint import pformat
 import sys
 
@@ -34,17 +34,13 @@ def output_graph(interval, pair):
 
     end = datetime.now(tzlocal())
     if interval == 'year':
-        start = date(2015, 4, 1)
-        months = (end.year - start.year) * 12 + end.month - start.month
-        if months > 12:
-            months = 12
-        title = 'Past ' + str(months) + ' Months'
-        delta = timedelta(weeks=4 * months)
+        title = 'Past 12 Months'
+        delta = timedelta(weeks=48)
         start = end - delta
         granularity = calculate_granularity(end - start)
         datetime_format = '%m'
         width = 0.008
-        text = '\n8m: '
+        text = '\n12m: '
     elif interval == 'month':
         title = 'Past Month'
         delta = timedelta(weeks=4)
