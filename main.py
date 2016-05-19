@@ -40,7 +40,7 @@ def output_graph(interval, pair):
         granularity = calculate_granularity(end - start)
         datetime_format = '%m'
         width = 0.008
-        text = '\n12m: '
+        text = '\n1y: '
     elif interval == 'month':
         title = 'Past Month'
         delta = timedelta(weeks=4)
@@ -56,7 +56,7 @@ def output_graph(interval, pair):
         granularity = calculate_granularity(end - start)
         datetime_format = '%a'
         width = 0.005
-        text = '\nweek: '
+        text = '\n1w: '
     elif interval == 'day':
         title = 'Past Day'
         delta = timedelta(days=1)
@@ -64,7 +64,7 @@ def output_graph(interval, pair):
         granularity = calculate_granularity(end - start)
         datetime_format = '%I:%M'
         width = 0.001
-        text = '\nday: '
+        text = '\n1d: '
     else:
         return False
     params = {'granularity': granularity,
