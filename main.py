@@ -85,8 +85,10 @@ def output_graph(interval, pair):
     mkt_high_price = []
     volumes = []
     quotes = []
+    vwap_multiple_sum = 0.0
     try:
         for timestamp, low, high, open_px, close, volume in rates:
+            vwap_multiple_sum += float(close) * float(volume)
             timestamp = datetime.fromtimestamp(timestamp, tz=pytz.utc).astimezone(tzlocal())
             mkt_time += [timestamp]
             mkt_open_price += [float(open_px)]
@@ -98,7 +100,7 @@ def output_graph(interval, pair):
     except ValueError:
         print(pformat(rates))
         sys.exit(0)
-
+    vwap = vwap_multiple_sum/sum(volumes)
     percent = round((mkt_close_price[0] - mkt_open_price[-1]) * 100 / mkt_open_price[-1], 4)
     text += '{0:.0f} -> {1:.0f} {2:.0f}%'.format(mkt_open_price[-1], mkt_close_price[0], percent)
     plt.xlim(start, datetime.now(tzlocal()))
@@ -109,6 +111,7 @@ def output_graph(interval, pair):
                                                           min(mkt_low_price),
                                                           max(mkt_high_price),
                                                           hl_percent)
+    ax1.text(0.3, 0.9, s, transform=ax1.transAxes)
 
     red = (0.244, 0.102, 0.056)
     green = (0.132, 0.247, 0.102)
@@ -118,6 +121,7 @@ def output_graph(interval, pair):
     plt.gca().xaxis.set_major_formatter(date_formatter)
     plt.setp(plt.gca().get_xticklabels(), rotation=45, horizontalalignment='right')
     plt.suptitle(title, fontsize=20)
+    plt.gca().set_ylim([min(vwap*0.9, min(mkt_low_price)), max(vwap*1.1, max(mkt_high_price))])
     ax1.spines['right'].set_visible(False)
     ax1.spines['top'].set_visible(False)
     ax1.xaxis.set_ticks_position('bottom')
