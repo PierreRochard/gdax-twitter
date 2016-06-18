@@ -16,9 +16,9 @@ from twython import Twython, TwythonError
 
 from twitter_config import KEYS
 
-exchange_api_url = 'https://api.exchange.coinbase.com/'
+exchange_api_url = 'https://api.gdax.com/'
 
-ARGS = argparse.ArgumentParser(description='Coinbase Exchange bot.')
+ARGS = argparse.ArgumentParser(description='GDAX price tweeting bot.')
 ARGS.add_argument('--t', action='store_true', dest='tweeting', default=False, help='Tweet out graphs')
 
 args = ARGS.parse_args()
@@ -28,7 +28,8 @@ def calculate_granularity(delta):
     return int(delta.total_seconds() / 200)
 
 
-def output_graph(interval, pair):
+def output_graph(interval, pair_config):
+    pair = pair_config['from_currency'] + '-' + pair_config['to_currency']
     fig1 = plt.figure()
     ax1 = fig1.add_subplot(111)
 
@@ -73,7 +74,7 @@ def output_graph(interval, pair):
     try:
         rates = requests.get(exchange_api_url + 'products/' + pair + '/candles', params=params).json()
     except ValueError:
-        print('Unable to load Coinbase response')
+        print('Unable to load GDAX response')
         return False
     if 'message' in rates and rates['message'].startswith('You have exceeded your request rate'):
         print('Requesting too fast')
@@ -126,24 +127,23 @@ def output_graph(interval, pair):
     ax1.spines['top'].set_visible(False)
     ax1.xaxis.set_ticks_position('bottom')
     ax1.yaxis.set_ticks_position('left')
-    plt.savefig('{0}-{1}.png'.format(interval, pair))
+    plt.savefig('{0}-{1}.png'.format(interval, pair_config['screen_name']))
     return text
 
 
 def generate_graphs():
-    for pair in ['BTC-USD', 'BTC-GBP', 'BTC-EUR']:
-        currency = pair.split('-')[-1]
-        twitter = Twython(KEYS['APP_KEY_' + currency], KEYS['APP_SECRET_' + currency],
-                          KEYS['OAUTH_TOKEN_' + currency], KEYS['OAUTH_TOKEN_SECRET_' + currency])
+    for pair_config in KEYS:
         media_ids = []
         tweet = ''
         for interval in ['day', 'week', 'month', 'year']:
-            text = output_graph(interval, pair)
+            text = output_graph(interval, pair_config)
             if not text:
                 continue
             tweet += text
-            if args.tweeting:
-                photo = open('{0}-{1}.png'.format(interval, pair), 'rb')
+            if args.tweeting and pair_config['APP_KEY']:
+                twitter = Twython(pair_config['APP_KEY'], pair_config['APP_SECRET'],
+                                  pair_config['OAUTH_TOKEN'], pair_config['OAUTH_TOKEN_SECRET'])
+                photo = open('{0}-{1}.png'.format(interval, pair_config['screen_name']), 'rb')
                 try:
                     response = twitter.upload_media(media=photo)
                 except TwythonError as err:
@@ -151,9 +151,11 @@ def generate_graphs():
                     return True
                 media_ids += [response['media_id']]
             time.sleep(10)
-        if args.tweeting:
+        if args.tweeting and pair_config['APP_KEY']:
+            twitter = Twython(pair_config['APP_KEY'], pair_config['APP_SECRET'],
+                            pair_config['OAUTH_TOKEN'], pair_config['OAUTH_TOKEN_SECRET'])
             try:
-                for status in twitter.get_user_timeline(screen_name='CBExchange' + currency):
+                for status in twitter.get_user_timeline(screen_name=pair_config['screen_name']):
                     twitter.destroy_status(id=status['id_str'])
                 twitter.update_status(status=tweet, media_ids=media_ids)
             except TwythonError as err:
