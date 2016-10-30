@@ -1,25 +1,32 @@
 import argparse
 from datetime import datetime, timedelta
-from pprint import pformat
-import sys
 
 from dateutil.tz import tzlocal
 import pytz
 import time
 
 import requests
+import matplotlib as mpl
+
+mpl.use('Agg')
 import matplotlib.dates as mdates
 from matplotlib.dates import date2num
 from matplotlib.finance import candlestick_ohlc
 import matplotlib.pyplot as plt
 from twython import Twython, TwythonError
 
-from twitter_config import KEYS
+from twitter_config import KEYS, SENTRY
+
+from raven import Client
+
+client = Client(SENTRY)
+
 
 exchange_api_url = 'https://api.gdax.com/'
 
 ARGS = argparse.ArgumentParser(description='GDAX price tweeting bot.')
-ARGS.add_argument('--t', action='store_true', dest='tweeting', default=False, help='Tweet out graphs')
+ARGS.add_argument('--t', action='store_true', dest='tweeting', default=False,
+                  help='Tweet out graphs')
 
 args = ARGS.parse_args()
 
@@ -72,12 +79,14 @@ def output_graph(interval, pair_config):
               'start': str(start),
               'end': str(end)}
     try:
-        rates = requests.get(exchange_api_url + 'products/' + pair + '/candles', params=params).json()
+        url = exchange_api_url + 'products/' + pair + '/candles'
+        rates = requests.get(url, params=params)
+        rates = rates.json()
     except ValueError:
-        print('Unable to load GDAX response')
+        client.captureException()
         return False
     if 'message' in rates and rates['message'].startswith('You have exceeded your request rate'):
-        print('Requesting too fast')
+        client.captureMessage('Requesting too fast')
         return False
     mkt_time = []
     mkt_open_price = []
@@ -87,20 +96,18 @@ def output_graph(interval, pair_config):
     volumes = []
     quotes = []
     vwap_multiple_sum = 0.0
-    try:
-        for timestamp, low, high, open_px, close, volume in rates:
-            vwap_multiple_sum += float(close) * float(volume)
-            timestamp = datetime.fromtimestamp(timestamp, tz=pytz.utc).astimezone(tzlocal())
-            mkt_time += [timestamp]
-            mkt_open_price += [float(open_px)]
-            mkt_low_price += [float(low)]
-            mkt_close_price += [float(close)]
-            mkt_high_price += [float(high)]
-            volumes += [float(volume)]
-            quotes += [(date2num(timestamp), float(open_px), float(high), float(low), float(close))]
-    except ValueError:
-        print(pformat(rates))
-        sys.exit(0)
+
+    for timestamp, low, high, open_px, close, volume in rates:
+        vwap_multiple_sum += float(close) * float(volume)
+        timestamp = datetime.fromtimestamp(timestamp, tz=pytz.utc).astimezone(tzlocal())
+        mkt_time += [timestamp]
+        mkt_open_price += [float(open_px)]
+        mkt_low_price += [float(low)]
+        mkt_close_price += [float(close)]
+        mkt_high_price += [float(high)]
+        volumes += [float(volume)]
+        quotes += [(date2num(timestamp), float(open_px), float(high), float(low), float(close))]
+
     vwap = vwap_multiple_sum/sum(volumes)
     percent = round((mkt_close_price[0] - mkt_open_price[-1]) * 100 / mkt_open_price[-1], 4)
     text += '{0:.0f} -> {1:.0f} {2:.0f}%'.format(mkt_open_price[-1], mkt_close_price[0], percent)
@@ -146,8 +153,8 @@ def generate_graphs():
                 photo = open('{0}-{1}.png'.format(interval, pair_config['screen_name']), 'rb')
                 try:
                     response = twitter.upload_media(media=photo)
-                except TwythonError as err:
-                    print('{0}'.format(err))
+                except TwythonError:
+                    client.captureException()
                     return True
                 media_ids += [response['media_id']]
             time.sleep(10)
@@ -158,9 +165,8 @@ def generate_graphs():
                 for status in twitter.get_user_timeline(screen_name=pair_config['screen_name']):
                     twitter.destroy_status(id=status['id_str'])
                 twitter.update_status(status=tweet, media_ids=media_ids)
-            except TwythonError as err:
-                print('{0}'.format(err))
-                print(len(tweet))
+            except TwythonError:
+                client.captureException()
 
 if __name__ == '__main__':
     generate_graphs()
