@@ -1,4 +1,4 @@
-# coinbase-exchange-twitter
+# gdax-twitter
 Unofficial Coinbase GDAX Exchange price feed
 
 
