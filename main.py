@@ -108,6 +108,15 @@ def output_graph(interval, pair_config):
         volumes += [float(volume)]
         quotes += [(date2num(timestamp), float(open_px), float(high), float(low), float(close))]
 
+    outlier_index_min = mkt_low_price.index(min(mkt_low_price))
+    outlier_index_max = mkt_high_price.index(min(mkt_high_price))
+
+    for mkt_list in (mkt_time, mkt_open_price, mkt_low_price, mkt_close_price,
+                     mkt_high_price, volumes, quotes):
+        print(len(mkt_list))
+        mkt_list.pop(outlier_index_min)
+        mkt_list.pop(outlier_index_max - 1)
+
     vwap = vwap_multiple_sum/sum(volumes)
     percent = round((mkt_close_price[0] - mkt_open_price[-1]) * 100 / mkt_open_price[-1], 4)
     text += '{0:.0f} -> {1:.0f} {2:.0f}%'.format(mkt_open_price[-1], mkt_close_price[0], percent)
