@@ -31,10 +31,6 @@ ARGS.add_argument('--t', action='store_true', dest='tweeting', default=False,
 args = ARGS.parse_args()
 
 
-def calculate_granularity(delta):
-    return int(delta.total_seconds() / 200)
-
-
 def output_graph(interval, pair_config):
     pair = pair_config['from_currency'] + '-' + pair_config['to_currency']
     fig1 = plt.figure()
@@ -43,9 +39,9 @@ def output_graph(interval, pair_config):
     end = datetime.now(tzlocal())
     if interval == 'year':
         title = 'Past 12 Months'
-        delta = timedelta(weeks=48)
+        delta = timedelta(weeks=42)
         start = end - delta
-        granularity = calculate_granularity(end - start)
+        granularity = 86400
         datetime_format = '%m'
         width = 0.008
         text = '\n1y: '
@@ -53,7 +49,7 @@ def output_graph(interval, pair_config):
         title = 'Past Month'
         delta = timedelta(weeks=4)
         start = end - delta
-        granularity = calculate_granularity(end - start)
+        granularity = 21600
         datetime_format = '%m - %d'
         width = 0.008
         text = '\n1m: '
@@ -61,7 +57,7 @@ def output_graph(interval, pair_config):
         title = 'Past Week'
         delta = timedelta(weeks=1)
         start = end - delta
-        granularity = calculate_granularity(end - start)
+        granularity = 3600
         datetime_format = '%a'
         width = 0.005
         text = '\n1w: '
@@ -69,18 +65,21 @@ def output_graph(interval, pair_config):
         title = 'Past Day'
         delta = timedelta(days=1)
         start = end - delta
-        granularity = calculate_granularity(end - start)
+        granularity = 900
         datetime_format = '%I:%M'
         width = 0.001
         text = '\n1d: '
     else:
         return False
-    params = {'granularity': granularity,
-              'start': str(start),
-              'end': str(end)}
+    params = {
+        'granularity': granularity,
+        'start': start.isoformat(),
+        'end': end.isoformat()
+    }
     try:
         url = exchange_api_url + 'products/' + pair + '/candles'
         rates = requests.get(url, params=params)
+        rates.raise_for_status()
         rates = rates.json()
     except ValueError:
         client.captureException()

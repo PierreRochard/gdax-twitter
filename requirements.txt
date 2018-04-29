@@ -1,3 +1,4 @@
-matplotlib
+matplotlib<2
 raven
-twython
+requests==2.18.1
+twython==3.6.0
